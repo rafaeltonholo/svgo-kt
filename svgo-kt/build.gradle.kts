@@ -7,7 +7,7 @@ plugins {
 }
 
 kotlin {
-    createSvgoKtPlatforms().forEach { target ->
+    createSvgoKtNativePlatforms().forEach { target ->
         target.binaries {
             sharedLib {
                 baseName = "svgo-kt"
@@ -15,9 +15,12 @@ kotlin {
         }
     }
 
+    createJsPlatform(moduleName = "svgo")
+
     sourceSets {
         commonMain.dependencies {
-            // dependencies
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.xmlutil.core)
         }
     }
 }

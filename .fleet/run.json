@@ -1,0 +1,15 @@
+{
+    "configurations": [
+        
+        {
+            "name": "samples [Js]",
+            "type": "gradle",
+            "workingDir": "$PROJECT_DIR$",
+            "tasks": ["jsNodeRun"],
+            "args": ["-p", "$PROJECT_DIR$/samples"],
+            "initScripts": {
+                "flmapper": "ext.mapPath = { path -> null }"
+            }
+        }
+    ]
+}
