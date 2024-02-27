@@ -18,7 +18,7 @@ data class Config(
      * [{ name: 'myPlugin', fn: () => ({}) }]
      * TODO.
      */
-    val plugins: List<Any> = listOf(),
+    val plugins: List<Any>? = null,
     /** Options for rendering optimized SVG from AST. */
     val js2svg: StringifyOptions? = null,
     /** Output as Data URI string. */

@@ -1,8 +1,9 @@
+import kotlinx.coroutines.runBlocking
 import svgokt.domain.builder.svgo
 import svgokt.domain.EndOfLine
 import svgokt.getPlatform
 
-fun main() {
+fun main(): Unit = runBlocking {
     println("Current platform: ${getPlatform().name}")
     val svgo = svgo {
         config {
@@ -14,5 +15,7 @@ fun main() {
         }
     }
 
-    println(svgo)
+    val (original, expected) = SvgResource.Simple
+
+    svgo.optimize(input = original).also { println("output = $it") }
 }

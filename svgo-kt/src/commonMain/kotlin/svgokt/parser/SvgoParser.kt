@@ -161,7 +161,9 @@ class SvgoParser(
         val element = XastElement(
             // parentNode = parentNode,
             name = event.tag.name,
-            attributes = event.tag.attributes.mapValues { (_, value) -> value.value.toString() },
+            attributes = event.tag.attributes
+                .mapValues { (_, value) -> value.value.toString() }
+                .toMutableMap(),
             children = mutableListOf(),
         )
         pushToContent(element)

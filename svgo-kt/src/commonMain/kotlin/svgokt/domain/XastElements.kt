@@ -67,7 +67,7 @@ data class XastText(
 data class XastElement(
     // override val parentNode: XastParent,
     val name: String,
-    val attributes: Map<String, String>,
+    val attributes: MutableMap<String, String>,
     override val children: MutableList<XastChild>,
     override val type: XastElementType = XastElementType.ELEMENT,
 ) : XastChild, XastParent

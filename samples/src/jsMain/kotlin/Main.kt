@@ -14,28 +14,11 @@ suspend fun main() {
         }
     }
 
+
+
 //    println(svgo)
 
-    val (original, expected) = """
-        |<svg xmlns="http://www.w3.org/2000/svg">
-        |    <g attr1="val1">
-        |        <g attr2="val2">
-        |            <path attr2="val3" d="..."/>
-        |        </g>
-        |        <path d="..."/>
-        |    </g>
-        |</svg>
-        |
-        |@@@
-        |
-        |<svg xmlns="http://www.w3.org/2000/svg">
-        |  <g attr1="val1">
-        |    <g attr2="val2">
-        |      <path attr2="val3" d="..."/>
-        |    </g>
-        |    <path d="..."/>
-        |  </g>
-        |</svg>""".trimMargin().trim().split("\\s*@@@\\s*".toRegex())
+    val (original, expected) = SvgResource.EntitySvg
 
     svgo.optimize(input = original)
     println("Optimize finished")
