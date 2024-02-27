@@ -117,8 +117,6 @@ internal class SaxParser(
         .mapValues { (_, value) -> value.toChar().toString() }
         .toMutableMap()
     internal val attribList = mutableListOf<Pair<String, Any>>()
-    internal var attribName: String = ""
-    internal var attribValue: String = ""
     internal var entity: String = ""
 
     // namespaces form a prototype chain.
@@ -500,8 +498,12 @@ internal class SaxParser(
                         currentChar == '>' -> openTag(parser = this)
                         currentChar == '/' -> state = Sax.State.OPEN_TAG_SLASH
                         currentChar.isMatch(nameStart) -> {
-                            attribName = currentChar.toString()
-                            attribValue = ""
+                            updateBuffer {
+                                copy(
+                                    attribName = currentChar.toString(),
+                                    attribValue = "",
+                                )
+                            }
                             state = Sax.State.ATTRIB_NAME
                         }
 
@@ -516,14 +518,16 @@ internal class SaxParser(
 
                         currentChar == '>' -> {
                             strictFail(parser = this, "Attribute without value")
-                            attribValue = attribName
+                            updateBuffer { copy(attribValue = attribName) }
                             attrib(parser = this)
                             openTag(parser = this)
                         }
 
                         currentChar.isSaxWhitespace() -> state = Sax.State.ATTRIB_NAME_SAW_WHITE
 
-                        currentChar.isMatch(nameBody) -> attribName += currentChar
+                        currentChar.isMatch(nameBody) -> updateBuffer {
+                            copy(attribName = attribName + currentChar)
+                        }
 
                         else -> strictFail(parser = this, "Invalid attribute name")
                     }
@@ -537,18 +541,17 @@ internal class SaxParser(
                         state = Sax.State.ATTRIB_VALUE
                     } else {
                         strictFail(parser = this, "Attribute without value")
-                        val attribute = SaxAttribute(name = attribName, value = attribValue)
+                        val attribute = SaxAttribute(name = buffer.attribName, value = buffer.attribValue)
                         tag = tag?.copy(attributes = buildMap {
                             tag?.attributes?.let { putAll(it) }
-                            put(attribName, attribute)
+                            put(buffer.attribName, attribute)
                         })
-                        attribValue = ""
                         tryEmit(SaxEvent.Attribute(attribute))
-                        attribName = ""
+                        updateBuffer { copy(attribValue = "", attribName = "") }
                         when {
                             currentChar == '>' -> openTag(parser = this)
                             currentChar.isMatch(nameStart) -> {
-                                attribName = currentChar.toString()
+                                updateBuffer { copy(attribName = currentChar.toString()) }
                                 state = Sax.State.ATTRIB_NAME
                             }
 
@@ -573,7 +576,7 @@ internal class SaxParser(
                         else -> {
                             strictFail(parser = this, "Unquoted attribute value")
                             state = Sax.State.ATTRIB_VALUE_UNQUOTED
-                            attribValue = currentChar.toString()
+                            updateBuffer { copy(attribValue = currentChar.toString()) }
                         }
                     }
                     continue
@@ -584,7 +587,7 @@ internal class SaxParser(
                         if (currentChar == '&') {
                             state = Sax.State.ATTRIB_VALUE_ENTITY_Q
                         } else {
-                            attribValue += currentChar
+                            updateBuffer { copy(attribValue = attribValue + currentChar) }
                         }
                         continue
                     }
@@ -601,8 +604,7 @@ internal class SaxParser(
                         currentChar == '/' -> state = Sax.State.OPEN_TAG_SLASH
                         currentChar.isMatch(nameStart) -> {
                             strictFail(parser = this, "No whitespace between attributes")
-                            attribName = currentChar.toString()
-                            attribValue = ""
+                            updateBuffer { copy(attribName = currentChar.toString(), attribValue = "") }
                             state = Sax.State.ATTRIB_NAME
                         }
 
@@ -616,7 +618,7 @@ internal class SaxParser(
                         if (currentChar == '&') {
                             state = Sax.State.ATTRIB_VALUE_ENTITY_U
                         } else {
-                            attribValue += currentChar
+                            updateBuffer { copy(attribValue = attribValue + currentChar) }
                         }
                         continue
                     }
@@ -867,9 +869,7 @@ internal class SaxParser(
         if (t == 0) {
             closedRoot = true
         }
-        updateBuffer { copy(tagName = "") }
-        attribValue = ""
-        attribName = ""
+        updateBuffer { copy(tagName = "", attribValue = "", attribName = "") }
         attribList.clear()
         state = Sax.State.TEXT
     }
@@ -1036,39 +1036,37 @@ private suspend fun openTag(parser: SaxParser, selfClosing: Boolean = false) {
         parser.updateBuffer { copy(tagName = "") }
     }
 
-    parser.attribName = ""
-    parser.attribValue = ""
+    parser.updateBuffer { copy(attribValue = "", attribName = "") }
     parser.attribList.clear()
 }
 
 private suspend fun attrib(parser: SaxParser) {
     if (!parser.strict) {
-        parser.attribName = parser.looseCase(parser.attribName)
+        parser.updateBuffer { copy(attribName = parser.looseCase(attribName)) }
     }
 
-    val inAttributeList = parser.attribList.indexOfFirst { it.first == parser.attribName } != -1
-    val inTagAttributes = parser.tag?.attributes?.get(parser.attribName) != null
+    val inAttributeList = parser.attribList.indexOfFirst { it.first == parser.buffer.attribName } != -1
+    val inTagAttributes = parser.tag?.attributes?.get(parser.buffer.attribName) != null
     if (inAttributeList || inTagAttributes) {
-        parser.apply {
-            attribName = ""
-            attribValue = ""
+        parser.updateBuffer {
+            copy(attribName = "", attribValue = "")
         }
         return
     }
 
-    val (prefix, local) = qname(parser.attribName, isAttribute = true)
+    val (prefix, local) = qname(parser.buffer.attribName, isAttribute = true)
     if (parser.options.xmlns) {
         if (prefix == "xmlns") {
             // namespace binding attribute. push the binding into scope
             when {
-                local == "xml" && parser.attribValue != XML_NAMESPACE -> strictFail(
+                local == "xml" && parser.buffer.attribValue != XML_NAMESPACE -> strictFail(
                     parser = parser,
-                    message = "xml: prefix must be bound to $XML_NAMESPACE\nActual: ${parser.attribValue}",
+                    message = "xml: prefix must be bound to $XML_NAMESPACE\nActual: ${parser.buffer.attribValue}",
                 )
 
-                local == "xmlns" && parser.attribValue != XMLNS_NAMESPACE -> strictFail(
+                local == "xmlns" && parser.buffer.attribValue != XMLNS_NAMESPACE -> strictFail(
                     parser = parser,
-                    message = "xmlns: prefix must be bound to $XMLNS_NAMESPACE\nActual: ${parser.attribValue}",
+                    message = "xmlns: prefix must be bound to $XMLNS_NAMESPACE\nActual: ${parser.buffer.attribValue}",
                 )
 
                 else -> {
@@ -1084,7 +1082,7 @@ private suspend fun attrib(parser: SaxParser) {
                     val ns = SaxNamespace(
                         buildMap {
                             tag.ns?.let { putAll(it) }
-                            put(local, parser.attribValue)
+                            put(local, parser.buffer.attribValue)
                         }
                     )
                     parser.tag = tag.copy(ns = ns)
@@ -1095,12 +1093,12 @@ private suspend fun attrib(parser: SaxParser) {
         // defer onattribute events until all attributes have been seen
         // so any new bindings can take effect. preserve attribute order
         // so deferred events can be emitted in document order
-        parser.attribList += parser.attribName to parser.attribValue
+        parser.attribList += parser.buffer.attribName to parser.buffer.attribValue
     } else {
         // in non-xmlns mode, we can emit the event right away
         val attribute = SaxAttribute(
-            name = parser.attribName,
-            value = parser.attribValue,
+            name = parser.buffer.attribName,
+            value = parser.buffer.attribValue,
             prefix = prefix,
             local = local,
             uri = if (prefix.isEmpty()) "" else parser.tag?.ns?.get(prefix) ?: "",
@@ -1108,14 +1106,13 @@ private suspend fun attrib(parser: SaxParser) {
         parser.tag = parser.tag?.copy(
             attributes = buildMap {
                 parser.tag?.attributes?.let { putAll(it) }
-                put(parser.attribName, attribute)
+                put(parser.buffer.attribName, attribute)
             }
         )
         parser.tryEmit(SaxEvent.Attribute(attribute))
     }
-    parser.apply {
-        attribName = ""
-        attribValue = ""
+    parser.updateBuffer {
+        copy(attribName = "", attribValue = "")
     }
 }
 
