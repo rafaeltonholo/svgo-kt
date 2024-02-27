@@ -707,7 +707,7 @@ internal class SaxParser(
 
                             // Custom entities can contain tags, so we potentially need to parse the result
                             if (state == Sax.State.TEXT_ENTITY &&
-                                entities.containsKey(entity).not() &&
+                                Sax.Entities.containsKey(entity).not() &&
                                 parsedEntity != "&$entity;"
                             ) {
                                 currentChunk = currentChunk.slice(0..i) +
