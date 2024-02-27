@@ -16,6 +16,7 @@ kotlin {
     }
 
     createJsPlatform(moduleName = "svgo")
+    createJvmPlatform()
 
     sourceSets {
         commonMain.dependencies {

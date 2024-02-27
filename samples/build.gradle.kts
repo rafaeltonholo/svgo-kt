@@ -15,6 +15,8 @@ kotlin {
 
     createJsPlatform("svgo-sample")
 
+    createJvmPlatform()
+
     sourceSets {
         commonMain.dependencies {
             implementation(projects.svgoKt)
@@ -23,6 +25,9 @@ kotlin {
         jsMain.dependencies {
             implementation(libs.kotlinx.coroutines.js)
             implementation(npm("svgo", "3.2.0"))
+        }
+        jvmMain.dependencies {
+            implementation(libs.kotlinx.coroutines.jvm)
         }
     }
 }

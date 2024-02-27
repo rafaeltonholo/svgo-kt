@@ -1,5 +1,7 @@
 package svgokt.domain
 
+import kotlin.jvm.JvmInline
+
 enum class XastElementType {
     DOCTYPE,
     INSTRUCTION,
@@ -33,6 +35,7 @@ data class XastDoctype(
     val data: XastDoctypeData,
     override val type: XastElementType = XastElementType.DOCTYPE,
 ) : XastChild {
+    @JvmInline
     value class XastDoctypeData(val doctype: String)
 }
 

@@ -27,3 +27,5 @@ fun KotlinMultiplatformExtension.createJsPlatform(moduleName: String): KotlinJsT
         }
     }
 }
+
+fun KotlinMultiplatformExtension.createJvmPlatform() = jvm()
