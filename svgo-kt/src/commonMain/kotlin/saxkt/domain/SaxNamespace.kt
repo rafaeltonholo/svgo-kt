@@ -6,6 +6,6 @@ data class SaxNamespace(
     companion object {
         operator fun invoke(
             vararg pairs: Pair<String, String>,
-        ) = SaxNamespace(mapOf(*pairs)).also { println("NS=$it") }
+        ) = SaxNamespace(mapOf(*pairs))
     }
 }

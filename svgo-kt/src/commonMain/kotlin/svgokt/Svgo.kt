@@ -3,7 +3,7 @@ package svgokt
 import svgokt.domain.Config
 import svgokt.domain.Output
 import svgokt.domain.PluginInfo
-import svgokt.parser.parseSvg
+import svgokt.parser.SvgoParser
 
 interface Svgo {
     suspend fun optimize(input: String, config: Config? = null): Output
@@ -26,7 +26,7 @@ internal class SvgoImpl(
         for (i in 0 until maxPassCount) {
             info = info.copy(multipassCount = i)
             println("Before parsing")
-            val ast = parseSvg(data = input, from = overrideConfig.path)
+            val ast = SvgoParser().parseSvg(data = input, from = overrideConfig.path)
             println("After parsing")
             println("ast=$ast")
         }
