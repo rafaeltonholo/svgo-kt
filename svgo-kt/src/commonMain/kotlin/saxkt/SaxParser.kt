@@ -431,7 +431,7 @@ internal class SaxParser(
                     when {
                         currentChar == '?' -> state = Sax.State.PROC_INST_ENDING
                         currentChar.isSaxWhitespace() -> state = Sax.State.PROC_INST_BODY
-                        else -> updateBuffer { copy(procInstBody = procInstBody + currentChar) }
+                        else -> updateBuffer { copy(procInstName = procInstName + currentChar) }
                     }
                     continue
                 }
