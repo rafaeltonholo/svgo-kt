@@ -1,8 +1,8 @@
 package saxkt
 
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import saxkt.domain.PositionTracker
 import saxkt.domain.QName
 import saxkt.domain.SaxAttribute
@@ -124,7 +124,7 @@ internal class SaxParser(
     // namespaces form a prototype chain.
     // it always points at the current tag,
     // which protos to its parent tag.
-    internal val ns: SaxNamespace? = if (options.xmlns) rootNs else null
+    private val ns: SaxNamespace? = if (options.xmlns) rootNs else null
     internal val parentNs: SaxNamespace?
         get() = tags.lastOrNull()?.ns ?: ns
 
@@ -137,10 +137,10 @@ internal class SaxParser(
     private var bufferCheckPosition = Sax.MaxBufferLength
 
     internal var state: Sax.State = Sax.State.BEGIN
-    private val _events = MutableStateFlow<SaxEvent>(SaxEvent.Ready)
-    val events: StateFlow<SaxEvent> = _events.asStateFlow()
+    private val _events = MutableSharedFlow<SaxEvent>()
+    val events: SharedFlow<SaxEvent> = _events.asSharedFlow()
 
-    fun write(chunk: String?): SaxParser {
+    suspend fun write(chunk: String?): SaxParser {
         error?.let { throw SaxErrorException(error = it) }
 
         if (closed) {
@@ -265,7 +265,7 @@ internal class SaxParser(
                 Sax.State.SGML_DECL -> {
                     when {
                         (buffer.sgmlDecl + currentChar.toString()).uppercase() == CDATA -> {
-                            _events.tryEmit(SaxEvent.OpenCdata)
+                            tryEmit(SaxEvent.OpenCdata)
                             state = Sax.State.CDATA
                             updateBuffer { copy(sgmlDecl = "", cdata = "") }
                         }
@@ -284,7 +284,7 @@ internal class SaxParser(
                         }
 
                         currentChar == '>' -> {
-                            _events.tryEmit(SaxEvent.SgmlDeclaration(declaration = buffer.sgmlDecl))
+                            tryEmit(SaxEvent.SgmlDeclaration(declaration = buffer.sgmlDecl))
                             updateBuffer { copy(sgmlDecl = "") }
                             state = Sax.State.TEXT
                         }
@@ -311,7 +311,7 @@ internal class SaxParser(
                 Sax.State.DOCTYPE -> {
                     if (currentChar == '>') {
                         state = Sax.State.TEXT
-                        _events.tryEmit(SaxEvent.Doctype(data = buffer.doctype))
+                        tryEmit(SaxEvent.Doctype(data = buffer.doctype))
                         updateBuffer { copy(isDoctypeVisited = true) }
                     } else {
                         updateBuffer { copy(doctype = doctype + currentChar) }
@@ -366,7 +366,7 @@ internal class SaxParser(
                         state = Sax.State.COMMENT_ENDED
                         updateBuffer { copy(comment = textOpts(comment)) }
                         if (buffer.comment.isNotEmpty()) {
-                            _events.tryEmit(SaxEvent.Comment(buffer.comment))
+                            tryEmit(SaxEvent.Comment(buffer.comment))
                         }
                         updateBuffer { copy(comment = "") }
                     } else {
@@ -411,9 +411,9 @@ internal class SaxParser(
                     when (currentChar) {
                         '>' -> {
                             if (buffer.cdata.isNotEmpty()) {
-                                _events.tryEmit(SaxEvent.Cdata(buffer.cdata))
+                                tryEmit(SaxEvent.Cdata(buffer.cdata))
                             }
-                            _events.tryEmit(SaxEvent.CloseCdata)
+                            tryEmit(SaxEvent.CloseCdata)
                             updateBuffer { copy(cdata = "") }
                             state = Sax.State.TEXT
                         }
@@ -446,7 +446,7 @@ internal class SaxParser(
 
                 Sax.State.PROC_INST_ENDING -> {
                     if (currentChar == '>') {
-                        _events.tryEmit(
+                        tryEmit(
                             SaxEvent.ProcessingInstruction(
                                 name = buffer.procInstName,
                                 body = buffer.procInstBody,
@@ -743,11 +743,11 @@ internal class SaxParser(
         return this
     }
 
-    fun close() {
+    suspend fun close() {
         write(chunk = null)
     }
 
-    private fun end(): SaxParser {
+    private suspend fun end(): SaxParser {
         if (sawRoot && !closedRoot) strictFail(parser = this, "Unclosed root tag")
         if (state != Sax.State.BEGIN && state != Sax.State.BEGIN_WHITESPACE && state != Sax.State.TEXT) {
             error("Unexpected end")
@@ -755,11 +755,11 @@ internal class SaxParser(
         closeText()
         currentChar = EMPTY_CHAR
         closed = true
-        _events.tryEmit(SaxEvent.End)
+        tryEmit(SaxEvent.End)
         return SaxParser(strict = strict, options = options) // end and return a new parser.
     }
 
-    private fun checkBufferLength() {
+    private suspend fun checkBufferLength() {
         val maxAllowed = max(Sax.MaxBufferLength, 10)
         var maxActual = 0
         // TODO: Find a better way to solve this.
@@ -792,12 +792,12 @@ internal class SaxParser(
         bufferCheckPosition = m + (positionTracker?.position ?: 0)
     }
 
-    private fun emitNode(event: SaxEvent) {
+    private suspend fun emitNode(event: SaxEvent) {
         if (buffer.textNode.isNotEmpty()) closeText()
         tryEmit(event)
     }
 
-    private fun closeTag() {
+    private suspend fun closeTag() {
         if (buffer.tagName.isEmpty()) {
             strictFail(parser = this, "Weird empty close tag.")
             updateBuffer { copy(textNode = "$textNode</>") }
@@ -847,14 +847,14 @@ internal class SaxParser(
         while (s-- > t) {
             val tag = tags.removeLast().also { this.tag = it }
             updateBuffer { copy(tagName = tag.name) }
-            _events.tryEmit(SaxEvent.CloseTag(buffer.tagName))
+            tryEmit(SaxEvent.CloseTag(buffer.tagName))
 
             val parentNS = tags.getOrNull(tags.size - 1) ?: /*parser.*/ns
             val currentNamespace = tag.ns
             if (currentNamespace != null && parentNS != currentNamespace) {
                 // remove namespace bindings introduced by tag
                 currentNamespace.forEach { (prefix, uri) ->
-                    _events.tryEmit(
+                    tryEmit(
                         SaxEvent.CloseNamespace(
                             prefix = prefix,
                             uri = uri,
@@ -874,7 +874,7 @@ internal class SaxParser(
         state = Sax.State.TEXT
     }
 
-    private fun newTag() {
+    private suspend fun newTag() {
         if (!strict) updateBuffer { copy(tagName = looseCase(tagName)) }
         val tag = SaxTag(
             name = buffer.tagName,
@@ -886,7 +886,7 @@ internal class SaxParser(
         )
         this.tag = tag
         attribList.clear()
-        _events.tryEmit(SaxEvent.OpenTagStart(tag))
+        tryEmit(SaxEvent.OpenTagStart(tag))
     }
 
     private fun trackPosition(currentChar: Char) {
@@ -903,7 +903,7 @@ internal class SaxParser(
         }
     }
 
-    private fun beginWhiteSpace(currentChar: Char) {
+    private suspend fun beginWhiteSpace(currentChar: Char) {
         if (currentChar == '<') {
             state = Sax.State.OPEN_WAKA
             startTagPosition = positionTracker?.position.orZero() // TODO: is this right?
@@ -928,9 +928,9 @@ internal class SaxParser(
         return textOpts
     }
 
-    internal fun closeText() {
+    internal suspend fun closeText() {
         updateBuffer { copy(textNode = textOpts(buffer.textNode)) }
-        if (buffer.textNode.isNotEmpty()) _events.tryEmit(SaxEvent.Text(textNode = buffer.textNode))
+        if (buffer.textNode.isNotEmpty()) tryEmit(SaxEvent.Text(textNode = buffer.textNode))
         updateBuffer { copy(textNode = "") }
     }
 
@@ -940,8 +940,9 @@ internal class SaxParser(
 
     private fun Int?.orZero() = this ?: 0
 
-    internal fun tryEmit(event: SaxEvent) {
-        _events.tryEmit(event)
+    internal suspend fun tryEmit(event: SaxEvent) {
+//        println("tryEmit() called with: event = $event")
+        _events.emit(event)
     }
 
     internal fun addToEntity(key: String, value: String) {
@@ -949,7 +950,7 @@ internal class SaxParser(
     }
 }
 
-private fun openTag(parser: SaxParser, selfClosing: Boolean = false) {
+private suspend fun openTag(parser: SaxParser, selfClosing: Boolean = false) {
     var tag = parser.tag ?: throw SaxErrorException(
         SaxError(
             reason = "Unable to open tag",
@@ -1040,7 +1041,7 @@ private fun openTag(parser: SaxParser, selfClosing: Boolean = false) {
     parser.attribList.clear()
 }
 
-private fun attrib(parser: SaxParser) {
+private suspend fun attrib(parser: SaxParser) {
     if (!parser.strict) {
         parser.attribName = parser.looseCase(parser.attribName)
     }
@@ -1135,14 +1136,14 @@ private fun qname(name: String, isAttribute: Boolean = false): QName {
     )
 }
 
-private fun strictFail(parser: SaxParser, message: String) {
+private suspend fun strictFail(parser: SaxParser, message: String) {
     if (parser.options.strict) {
         error(parser = parser, reason = message)
     }
 }
 
 
-private fun error(parser: SaxParser, reason: String): SaxParser {
+private suspend fun error(parser: SaxParser, reason: String): SaxParser {
     parser.closeText()
 
     val message = """$reason
@@ -1162,7 +1163,7 @@ private fun error(parser: SaxParser, reason: String): SaxParser {
     return parser
 }
 
-private fun parseEntity(parser: SaxParser): String {
+private suspend fun parseEntity(parser: SaxParser): String {
     var entity = parser.entity
     val entityLowercase = entity.lowercase()
     var num: Int? = null
