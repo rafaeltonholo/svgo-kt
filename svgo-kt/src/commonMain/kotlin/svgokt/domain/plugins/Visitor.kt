@@ -10,15 +10,17 @@ import svgokt.domain.XastParent
 import svgokt.domain.XastRoot
 import svgokt.domain.XastText
 
-data class VisitorNode<T : XastNode>(
-    val onEnter: ((node: T, parentNode: XastParent) -> Any/* symbol? */)? = null,
-    val onExit: ((node: T, parentNode: XastParent) -> Unit)? = null,
+sealed interface VisitState {
+    data object Skip : VisitState
+    data object Continue : VisitState
+}
+
+data class VisitorNode<in T : XastNode>(
+    val onEnter: ((node: T, parentNode: XastParent?) -> VisitState)? = null,
+    val onExit: ((node: T, parentNode: XastParent?) -> Unit)? = null,
 )
 
-data class VisitorRoot(
-    val onEnter: ((node: XastRoot, parentNode: XastParent) -> Unit)? = null,
-    val onExit: ((node: XastRoot, parentNode: XastParent) -> Unit)? = null,
-) // May not be needed.
+typealias VisitorRoot = VisitorNode<XastRoot>
 
 data class Visitor(
     val doctype: VisitorNode<XastDoctype>? = null,
@@ -28,4 +30,21 @@ data class Visitor(
     val text: VisitorNode<XastText>? = null,
     val element: VisitorNode<XastElement>? = null,
     val root: VisitorRoot? = null,
-)
+) {
+    /**
+     * Gets the visitor property based on the nodes type
+     * @suppress UNCHECKED_CAST since we know that T is going to be
+     * the expected type, otherwise we return null.
+     */
+    @Suppress("UNCHECKED_CAST")
+    inline fun <reified T : XastNode> get(node: T): VisitorNode<T>? = when (node::class) {
+        XastDoctype::class -> doctype
+        XastInstruction::class -> instruction
+        XastComment::class -> comment
+        XastCdata::class -> cdata
+        XastText::class -> text
+        XastElement::class -> element
+        XastRoot::class -> root
+        else -> null
+    } as? VisitorNode<T>?
+}

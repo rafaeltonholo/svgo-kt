@@ -71,6 +71,7 @@ internal class SvgoImpl(
     private fun resolvePluginConfig(plugin: Any): Plugin<*>? {
         val unknownBuiltinPluginMessage = "Unknown builtin plugin \"${plugin}\" specified."
         if (plugin is String) {
+            // resolve builtin plugin specified as string
             return pluginMap[plugin] ?: error(unknownBuiltinPluginMessage)
         }
 

@@ -2,6 +2,7 @@ package svgokt.domain.plugins
 
 import svgokt.GlobalOverrides
 import svgokt.domain.XastRoot
+import svgokt.domain.plugins.xast.visit
 
 typealias PluginFn = (root: XastRoot, params: PluginParams, info: PluginInfo) -> Visitor?
 
@@ -49,7 +50,7 @@ fun invokePlugins(
 
         val visitor = fn(ast, params, info)
         if (visitor != null) {
-            // visit(ast, visitor)
+            ast.visit(visitor = visitor)
         }
     }
 }
