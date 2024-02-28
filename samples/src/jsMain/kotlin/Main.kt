@@ -4,25 +4,28 @@ import svgokt.getPlatform
 
 suspend fun main() {
     println("Current platform: ${getPlatform().name}")
+    println("Current platform: ${getPlatform().name}")
     val svgo = svgo {
         config {
             floatPrecision = 2
             js2svg {
                 eol = EndOfLine.LF
                 indent = 2
+                pretty = true
             }
+
+//            plugin(RemoveDimensions)
         }
     }
 
+    val (original, expected) = SvgResource.Styles
 
-
-//    println(svgo)
-
-    val (original, expected) = SvgResource.EntitySvg
-
-    svgo.optimize(input = original)
+    val output = svgo.optimize(input = original)
     println("Optimize finished")
-//        svgojs.optimize(input = original).data.also { println(it) }
+
+    println("output = ${output.data}")
+    println("expected = $expected")
+    println("Expected == output -> ${output.data.trim() == expected}")
 
     println("End of program")
 }

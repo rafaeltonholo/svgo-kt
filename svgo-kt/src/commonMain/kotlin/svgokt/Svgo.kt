@@ -7,6 +7,7 @@ import svgokt.domain.plugins.PluginInfo
 import svgokt.domain.plugins.PresetDefault
 import svgokt.domain.plugins.invokePlugins
 import svgokt.parser.SvgoParser
+import svgokt.stringfier.stringifySvg
 
 interface Svgo {
     suspend fun optimize(input: String, config: Config? = null): Output
@@ -50,7 +51,7 @@ internal class SvgoImpl(
                 overrides = null,
                 globalOverrides = GlobalOverrides,
             )
-            output = ast.toString() /* stringifySvg(ast, config.js2svg) */
+            output = stringifySvg(data = ast, userOptions = overrideConfig.js2svg)
             if (output.length < prevResultSize) {
                 currentInput = output
                 prevResultSize = output.length
@@ -64,7 +65,7 @@ internal class SvgoImpl(
         }
 
         return Output(
-            data = output, // TODO.
+            data = output,
         )
     }
 
