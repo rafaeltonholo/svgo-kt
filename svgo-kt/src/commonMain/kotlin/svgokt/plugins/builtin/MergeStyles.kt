@@ -1,4 +1,4 @@
-package svgokt.domain.plugins.builtin
+package svgokt.plugins.builtin
 
 import svgokt.domain.XastCdata
 import svgokt.domain.XastElement
@@ -11,7 +11,7 @@ import svgokt.domain.plugins.PluginFn
 import svgokt.domain.plugins.VisitState
 import svgokt.domain.plugins.Visitor
 import svgokt.domain.plugins.VisitorNode
-import svgokt.domain.plugins.xast.detachFromParent
+import svgokt.plugins.xast.detachFromParent
 
 object MergeStyles : Plugin<NoPluginParam> {
     override val name: String = "mergeStyles"
@@ -20,7 +20,7 @@ object MergeStyles : Plugin<NoPluginParam> {
     override val fn: PluginFn = { _, _, _ ->
         Visitor(
             element = VisitorNode(
-                onEnter = ::onEnter,
+                onEnter = MergeStyles::onEnter,
             ),
         )
     }

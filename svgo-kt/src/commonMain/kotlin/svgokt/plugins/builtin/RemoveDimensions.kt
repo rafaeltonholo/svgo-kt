@@ -1,4 +1,4 @@
-package svgokt.domain.plugins.builtin
+package svgokt.plugins.builtin
 
 import svgokt.domain.builder.plugins.plugin
 import svgokt.domain.plugins.NoPluginParam

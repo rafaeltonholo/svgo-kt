@@ -1,8 +1,10 @@
-package svgokt.domain.plugins
+package svgokt.plugins
 
 import svgokt.GlobalOverrides
 import svgokt.domain.builder.plugins.plugin
-import svgokt.domain.plugins.builtin.MergeStyles
+import svgokt.domain.plugins.NoPluginParam
+import svgokt.domain.plugins.Plugin
+import svgokt.plugins.builtin.MergeStyles
 
 private val plugins: List<Plugin<*>> = listOf(
     MergeStyles,

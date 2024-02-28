@@ -4,9 +4,9 @@ import svgokt.domain.Config
 import svgokt.domain.Output
 import svgokt.domain.plugins.Plugin
 import svgokt.domain.plugins.PluginInfo
-import svgokt.domain.plugins.PresetDefault
-import svgokt.domain.plugins.invokePlugins
 import svgokt.parser.SvgoParser
+import svgokt.plugins.PresetDefault
+import svgokt.plugins.invokePlugins
 import svgokt.stringfier.stringifySvg
 
 interface Svgo {

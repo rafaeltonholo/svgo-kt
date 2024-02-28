@@ -1,4 +1,4 @@
-package svgokt.domain.plugins.xast
+package svgokt.plugins.xast
 
 import svgokt.domain.XastElement
 import svgokt.domain.XastNode
