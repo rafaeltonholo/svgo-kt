@@ -147,7 +147,7 @@ class SvgoParser(
                     // parentNode = current,
                 )
                 pushToContent(node)
-            } else if ("\\S".toRegex().matches(event.textNode)) {
+            } else if ("\\S".toRegex().containsMatchIn(event.textNode)) {
                 val node = XastText(
                     value = event.textNode.trim(),
                     // parentNode = current,
