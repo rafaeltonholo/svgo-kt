@@ -2,6 +2,7 @@ package svgokt.domain.plugins.builtin
 
 import svgokt.domain.builder.plugins.plugin
 import svgokt.domain.plugins.NoPluginParam
+import svgokt.domain.plugins.VisitState
 import svgokt.domain.plugins.Visitor
 import svgokt.domain.plugins.VisitorNode
 
@@ -20,6 +21,7 @@ val RemoveDimensions = plugin<NoPluginParam> {
     description =
         "removes width and height in presence of viewBox (opposite to removeViewBox, disable it first)"
     fn { _, _, _ ->
+        val onEnterSymbol = VisitState.Continue
         Visitor(
             element = VisitorNode(
                 onEnter = { node, _ ->
@@ -35,18 +37,18 @@ val RemoveDimensions = plugin<NoPluginParam> {
                                 }
 
                                 containsKey(widthKey) && containsKey(heightKey) -> {
-                                    val width = get(widthKey)?.toIntOrNull() ?: return@VisitorNode Unit
-                                    val height = get(heightKey)?.toIntOrNull() ?: return@VisitorNode Unit
+                                    val width = get(widthKey)?.toIntOrNull() ?: return@VisitorNode onEnterSymbol
+                                    val height = get(heightKey)?.toIntOrNull() ?: return@VisitorNode onEnterSymbol
                                     put(viewBoxKey, "0 0 $width $height")
                                     remove(widthKey)
                                     remove(heightKey)
                                 }
 
-                                else -> Unit
+                                else -> onEnterSymbol
                             }
                         }
                     }
-                    Unit
+                    onEnterSymbol
                 }
             )
         )

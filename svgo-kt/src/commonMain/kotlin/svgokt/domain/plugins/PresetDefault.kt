@@ -2,10 +2,10 @@ package svgokt.domain.plugins
 
 import svgokt.GlobalOverrides
 import svgokt.domain.builder.plugins.plugin
-import svgokt.domain.plugins.builtin.RemoveDimensions
+import svgokt.domain.plugins.builtin.MergeStyles
 
 private val plugins: List<Plugin<*>> = listOf(
-    RemoveDimensions, // not supposed to be here.
+    MergeStyles,
 )
 
 val PresetDefault = plugin<NoPluginParam> {

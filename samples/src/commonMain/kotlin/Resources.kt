@@ -50,4 +50,50 @@ object SvgResource {
         |        <rect x=".5" y=".5" width="49" height="29"/>
         |    </g>
         |</svg>""".trimMargin().trim().split("\\s*@@@\\s*".toRegex())
+
+    val Styles = """
+        |<svg>
+        |    <rect id="class" class="a"/>
+        |    <rect id="two-classes" class="b a"/>
+        |    <rect id="attribute" fill="purple"/>
+        |    <rect id="inline-style" style="fill: grey;"/>
+        |    <g fill="yellow">
+        |        <rect id="inheritance"/>
+        |        <g style="fill: blue;">
+        |            <g>
+        |                <rect id="nested-inheritance"/>
+        |            </g>
+        |        </g>
+        |    </g>
+        |    <style>
+        |        .a { fill: red; }
+        |    </style>
+        |    <style>
+        |        <![CDATA[
+        |          .b { fill: green; stroke: black; }
+        |        ]]>
+        |    </style>
+        |</svg>
+        |
+        |@@@
+        |
+        |<svg>
+        |  <rect id="class" class="a"/>
+        |  <rect id="two-classes" class="b a"/>
+        |  <rect id="attribute" fill="purple"/>
+        |  <rect id="inline-style" style="fill: grey;"/>
+        |  <g fill="yellow">
+        |    <rect id="inheritance"/>
+        |    <g style="fill: blue;">
+        |      <g>
+        |        <rect id="nested-inheritance"/>
+        |      </g>
+        |    </g>
+        |  </g>
+        |  <style>
+        |    <![CDATA[.a { fill: red; }
+        |          .b { fill: green; stroke: black; }
+        |        ]]>
+        |  </style>
+        |</svg>""".trimMargin().trim().split("\\s*@@@\\s*".toRegex())
 }
