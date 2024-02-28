@@ -263,7 +263,7 @@ internal class SaxParser(
                 Sax.State.SGML_DECL -> {
                     when {
                         (buffer.sgmlDecl + currentChar.toString()).uppercase() == CDATA -> {
-                            tryEmit(SaxEvent.OpenCdata)
+                            emitNode(SaxEvent.OpenCdata)
                             state = Sax.State.CDATA
                             updateBuffer { copy(sgmlDecl = "", cdata = "") }
                         }
@@ -282,7 +282,7 @@ internal class SaxParser(
                         }
 
                         currentChar == '>' -> {
-                            tryEmit(SaxEvent.SgmlDeclaration(declaration = buffer.sgmlDecl))
+                            emitNode(SaxEvent.SgmlDeclaration(declaration = buffer.sgmlDecl))
                             updateBuffer { copy(sgmlDecl = "") }
                             state = Sax.State.TEXT
                         }
@@ -309,7 +309,7 @@ internal class SaxParser(
                 Sax.State.DOCTYPE -> {
                     if (currentChar == '>') {
                         state = Sax.State.TEXT
-                        tryEmit(SaxEvent.Doctype(data = buffer.doctype))
+                        emitNode(SaxEvent.Doctype(data = buffer.doctype))
                         updateBuffer { copy(isDoctypeVisited = true) }
                     } else {
                         updateBuffer { copy(doctype = doctype + currentChar) }
@@ -364,7 +364,7 @@ internal class SaxParser(
                         state = Sax.State.COMMENT_ENDED
                         updateBuffer { copy(comment = textOpts(comment)) }
                         if (buffer.comment.isNotEmpty()) {
-                            tryEmit(SaxEvent.Comment(buffer.comment))
+                            emitNode(SaxEvent.Comment(buffer.comment))
                         }
                         updateBuffer { copy(comment = "") }
                     } else {
@@ -409,9 +409,9 @@ internal class SaxParser(
                     when (currentChar) {
                         '>' -> {
                             if (buffer.cdata.isNotEmpty()) {
-                                tryEmit(SaxEvent.Cdata(buffer.cdata))
+                                emitNode(SaxEvent.Cdata(buffer.cdata))
                             }
-                            tryEmit(SaxEvent.CloseCdata)
+                            emitNode(SaxEvent.CloseCdata)
                             updateBuffer { copy(cdata = "") }
                             state = Sax.State.TEXT
                         }
@@ -444,7 +444,7 @@ internal class SaxParser(
 
                 Sax.State.PROC_INST_ENDING -> {
                     if (currentChar == '>') {
-                        tryEmit(
+                        emitNode(
                             SaxEvent.ProcessingInstruction(
                                 name = buffer.procInstName,
                                 body = buffer.procInstBody,
@@ -546,7 +546,7 @@ internal class SaxParser(
                             tag?.attributes?.let { putAll(it) }
                             put(buffer.attribName, attribute)
                         })
-                        tryEmit(SaxEvent.Attribute(attribute))
+                        emitNode(SaxEvent.Attribute(attribute))
                         updateBuffer { copy(attribValue = "", attribName = "") }
                         when {
                             currentChar == '>' -> openTag(parser = this)
@@ -794,6 +794,18 @@ internal class SaxParser(
         bufferCheckPosition = m + (positionTracker?.position ?: 0)
     }
 
+    suspend fun flush() {
+        closeText()
+        if (buffer.cdata.isNotEmpty()) {
+            emitNode(SaxEvent.Cdata(buffer.cdata))
+            updateBuffer { copy(cdata = "") }
+        }
+        if (buffer.script.isNotEmpty()) {
+            emitNode(SaxEvent.Script(buffer.script))
+            updateBuffer { copy(script = "") }
+        }
+    }
+
     private suspend fun emitNode(event: SaxEvent) {
         if (buffer.textNode.isNotEmpty()) closeText()
         tryEmit(event)
@@ -849,14 +861,14 @@ internal class SaxParser(
         while (s-- > t) {
             val tag = tags.removeLast().also { this.tag = it }
             updateBuffer { copy(tagName = tag.name) }
-            tryEmit(SaxEvent.CloseTag(buffer.tagName))
+            emitNode(SaxEvent.CloseTag(buffer.tagName))
 
             val parentNS = tags.getOrNull(tags.size - 1) ?: /*parser.*/ns
             val currentNamespace = tag.ns
             if (currentNamespace != null && parentNS != currentNamespace) {
                 // remove namespace bindings introduced by tag
                 currentNamespace.forEach { (prefix, uri) ->
-                    tryEmit(
+                    emitNode(
                         SaxEvent.CloseNamespace(
                             prefix = prefix,
                             uri = uri,
