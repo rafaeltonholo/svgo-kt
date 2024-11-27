@@ -102,4 +102,20 @@ object Collections {
         add("pre")
         add("title")
     }
+
+    /**
+     * @see https://www.w3.org/TR/SVG11/linking.html#processingIRI
+     */
+    val referencesProps = setOf(
+        "clip-path",
+        "color-profile",
+        "fill",
+        "filter",
+        "marker-end",
+        "marker-mid",
+        "marker-start",
+        "mask",
+        "stroke",
+        "style",
+    )
 }
